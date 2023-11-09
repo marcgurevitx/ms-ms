@@ -1,0 +1,2 @@
+run "scripts/runTests.ms"
+
