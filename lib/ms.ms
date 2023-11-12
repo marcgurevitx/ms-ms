@@ -1833,7 +1833,7 @@ EvalMode.import = "import"
 Context = {}
 Context._name = "ms.Context"
 Context._inited = false
-Context.mode = null
+Context.evalMode = null
 Context.features = null
 Context.intrinsics = null
 Context.globals = null
@@ -1987,6 +1987,16 @@ end function
 
 // eval: ?
 eval = function(text, context=null)
+	
+	
+	context = Context.build(context)
+	
+	parseResult = parse(text, context)
+	
+	
+	
+	
+	
 	
 	
 	
