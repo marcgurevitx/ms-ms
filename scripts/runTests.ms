@@ -1,6 +1,37 @@
 import "grfon"
 
 
+// compareTwoStrings: ?
+globals.compareStrings = function(s1, s2)
+	i = 0
+	while true
+		if i == s1.len and i == s2.len then
+			print "  s1 == s2"
+			break
+		end if
+		if i == s1.len then
+			print "  s1 < s2"
+			break
+		end if
+		if i == s2.len then
+			print "  s1 > s2"
+			break
+		end if
+		c1 = s1[i]
+		c2 = s2[i]
+		if c1 != c2 then
+			print "  s1[" + i + "]=" + c1 + "(" + c1.code + ")   !=   s2[" + i + "]=" + c2 + "(" + c2.code + ")"
+			if i < 5 then left = 0 else left = i - 5
+			print "  (/" + s1[left:i + 5] + "/   !=   /" + s2[left:i + 5] + "/)"
+			break
+		end if
+		i += 1
+	end while
+	print ">"
+	input
+end function
+
+
 // _toPath: Substitutes `/` in a string for the platform specific path separator.
 _toPath = function(p)
 	if p.indexOf("/") != null then p = p.split("/").join(file.child)
@@ -161,4 +192,3 @@ end function
 
 
 if refEquals(locals, globals) then main
-

@@ -3,7 +3,7 @@
 
 // ensureImport: Imports a module and caches it in `globals`.
 // Use an existing function if present.
-// (Some platforms don't have this or the user might have implement their own `ensureImport`.)
+// (Some platforms don't have this or the user might have implemented their own `ensureImport`.)
 if globals.hasIndex("ensureImport") then
 	ensureImport = @globals.ensureImport
 else
@@ -322,14 +322,13 @@ SyntaxNode.length = null
 SyntaxNode.posFirst = null
 SyntaxNode.posLast = null
 SyntaxNode._propertyFullNames = []
-SyntaxNode.properties = null
+SyntaxNode._callableCandidate = null
 
 
 // init: ?
 SyntaxNode.init = function(start, length, subject)
 	self._inited = true
 	self._subject = subject
-	self.properties = {}
 	self.adjust start, length
 end function
 
@@ -374,7 +373,7 @@ SyntaxNode._str = function(depth, seen)
 	lines = []
 	for fullName in self._propertyFullNames
 		name = fullName - " =" - ":" - "." - "."
-		v = self.properties.get(name, "")
+		v = self.get(name, "")
 		if fullName.endsWith(" =") then
 			s = str(v, depth - 1, seen)
 			
@@ -436,18 +435,18 @@ end function
 // addProperty: ?
 SyntaxNode.addProperty = function(name, value, value2=null)
 	if self._propertyFullNames.indexOf(name + " =") != null or self._propertyFullNames.indexOf(name + ":") != null then
-		self.properties[name] = @value
+		self[name] = @value
 	else if self._propertyFullNames.indexOf(name + ".") != null then
-		if not self.properties.hasIndex(name) then self.properties[name] = []
-		self.properties[name].push @value
+		if not self.hasIndex(name) then self[name] = []
+		self[name].push @value
 	else if self._propertyFullNames.indexOf(name + "..") != null then
 		index = value
 		value = @value2
-		if not self.properties.hasIndex(name) then self.properties[name] = []
-		for _ in range(self.properties[name].len, index, 1)
-			self.properties[name].push []
+		if not self.hasIndex(name) then self[name] = []
+		for _ in range(self[name].len, index, 1)
+			self[name].push []
 		end for
-		self.properties[name][index].push @value
+		self[name][index].push @value
 	else
 		abort "Unable to add property `" + name + "` to " + self._name + " (available properties are " + self.propertyNames + ")"
 	end if
@@ -463,8 +462,8 @@ SyntaxNode.getProperty = function(name, index=null)
 			break
 		end if
 	end for
-	if not existsP then abort "Unable to add property `" + name + "` to " + self._name + " (available properties are " + self.propertyNames + ")"
-	v = self.properties.get(name)
+	if not existsP then abort "Unable to get property `" + name + "` of " + self._name + " (available properties are " + self.propertyNames + ")"
+	v = self.get(name)
 	if @v == null then return null
 	if index == null then return @v
 	if index >= v.len then return null
@@ -922,7 +921,7 @@ definitions = "" +
 "  StmtIf           <-  ( IfStart  IfInside  IfElseIf *  IfElse ?  IfEnd ) {stmtIf}  LxSep  " + _NL +
 
 
-"  StmtAssign       <-  ( Expression <leftAccess>  OpAssign {}  LxCont  ( Expression  /  FuncDef ) <expectedExpression!> ) {stmtAssign}  " + _NL +
+"  StmtAssign       <-  ( ( Expression  OpAssign {} ) <leftAccess>  LxCont  ( Expression  /  FuncDef ) <expectedExpression!> ) {stmtAssign}  " + _NL +
 
 
 "  CallArgList      <-  Expression  ( ','  LxCont  Expression <expectedCallArg!> ) *  (','  LxCont  FuncDef) ?  /  FuncDef  " + _NL +
@@ -1059,6 +1058,7 @@ capExpParens = function(match, subcaptures, arg, ctx)
 	else
 		node.parenthesize match.start, match.length
 	end if
+	node._callableCandidate = null
 	return node
 end function
 grammar.capture "expParens", @capExpParens
@@ -1077,6 +1077,7 @@ capExpBinOp = function(match, subcaptures, arg, ctx)
 		_node.init match.start, length, ctx.subject
 		_node.addProperty "operands", node
 		_node.addProperty "operands", rightOperand
+		_node._callableCandidate = node._callableCandidate
 		node = _node
 	end for
 	return node
@@ -1111,6 +1112,7 @@ capExpCompare = function(match, subcaptures, arg, ctx)
 		_node.addProperty "operators", subcaptures.list[i]
 		_node.addProperty "operands", subcaptures.list[i + 1]
 	end for
+	_node._callableCandidate = node._callableCandidate
 	return _node
 end function
 grammar.capture "expCompare", @capExpCompare
@@ -1171,6 +1173,7 @@ capExpAccess = function(match, subcaptures, arg, ctx)
 			_node.init node.start, length, ctx.subject
 			_node.addProperty("operands", node)
 			_node.addProperty("key", cap.key)
+			_node._callableCandidate = node._callableCandidate
 			node = _node
 		else if cap.type == "slice" then
 			_node = new OpSlice
@@ -1178,12 +1181,14 @@ capExpAccess = function(match, subcaptures, arg, ctx)
 			_node.addProperty("operands", node)
 			if cap.from != null then _node.addProperty("from", cap.from)
 			if cap.to != null then _node.addProperty("to", cap.to)
+			_node._callableCandidate = node._callableCandidate
 			node = _node
 		else if cap.type == "dot" then
 			_node = new OpDot
 			_node.init node.start, length, ctx.subject
 			_node.addProperty("operands", node)
 			_node.addProperty("name", cap.name)
+			_node._callableCandidate = node._callableCandidate
 			node = _node
 		else if cap.type == "call" then
 			_node = new OpCall
@@ -1192,6 +1197,12 @@ capExpAccess = function(match, subcaptures, arg, ctx)
 			for _arg in cap.args
 				_node.addProperty("args", _arg)
 			end for
+			betweenIndex = node.start + node.length
+			if ctx.subject[betweenIndex] != "(" then
+				_node._callableCandidate = {}
+				_node._callableCandidate.node = node
+				_node._callableCandidate.length = cap.match.start - node.start
+			end if
 			node = _node
 		else
 			abort "Unknown access type: `" + cap.type + "`"
@@ -1376,7 +1387,7 @@ _implantProperty = function(node, propertyName, befLiterals)
 	if p isa _BefHead then
 		
 		//
-		node.properties[propertyName] = befLiterals[p.id]
+		node[propertyName] = befLiterals[p.id]
 		//
 		
 		befLiterals.remove p.id
@@ -1734,7 +1745,20 @@ grammar.matchTime "leftAccess", @mtLeftAccess
 mtStmtCallFunc = function(match, subcaptures, arg, ctx)
 	if match == null then return null
 	func = subcaptures.list[0]
-	if func isa OpSubtract then
+	if func._callableCandidate != null then
+		candidateNode = func._callableCandidate.node
+		candidateLength = func._callableCandidate.length
+		start = candidateNode.start
+		length = candidateLength
+		fragment = ctx.subject[start : start + length]
+		if start != func.start then abort "Impossible candidate for statement's callable: `" + str(candidateNode) + "`"
+		m = new peg.Match
+		m.init start, length, fragment
+		m.capture = function(_,_,_,_)
+			return candidateNode
+		end function
+		return m
+	else if func isa OpSubtract then
 		operands = func.getProperty("operands")
 		left = operands[0]
 		right = operands[1]
