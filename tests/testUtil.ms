@@ -601,3 +601,9 @@ testSafeMapHas = function
 	m.__isa = m
 	qa.assertEqual ms.safeMapHas(100, m, "foo"), false
 end function
+
+
+testTagToPhrase = function
+	qa.assertEqual ms.tagToPhrase("foo"), "Foo"
+	qa.assertEqual ms.tagToPhrase("fooBarBaz"), "Foo bar baz"
+end function

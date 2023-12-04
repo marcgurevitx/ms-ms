@@ -40,7 +40,8 @@ if iVersion.hostName == "Mini Micro" then _NL = char(13) else _NL = char(10)
 
 
 // intrinsics: ?
-if iVersion.miniscript.split(".")[:2].join(".").val <= 1.6 then
+vv = iVersion.miniscript.split(".")
+if vv[0].val * 1000000 + vv[1].val * 1000 + vv[2].val < 1006002 then
 	intrinsics = {}
 	intrinsics.abs = @abs
 	intrinsics.acos = @acos
@@ -822,6 +823,28 @@ updateInPlace = function(m1, m2)
 	for kv in m2
 		m1[@kv.key] = @kv.value
 	end for
+end function
+
+
+// _tagToPhrase: ?
+tagToPhrase = function(tag)
+	_indexes = [0]
+	for i in tag.indexes
+		if tag[i].upper == tag[i] then _indexes.push i
+	end for
+	words = []
+	prevIdx = null
+	for i in range(_indexes.len - 1, 0, -1)
+		idx = _indexes[i]
+		if prevIdx != null then
+			words.insert 0, tag[idx:prevIdx].lower
+		else
+			words.insert 0, tag[idx:].lower
+		end if
+		prevIdx = idx
+	end for
+	phrase = words.join(" ")
+	return phrase[0].upper + phrase[1:]
 end function
 
 
@@ -4012,10 +4035,10 @@ definitions = "" +
 "                                                                                   " + _NL +
 "                                                                                   " + _NL +
 "  FuncCont         <-  LxSep  ( ! . ) <reportContFunction> ?  StSep <expectedStatementSeparator!>  ( ! . ) <reportContFunction> ?  " + _NL +
-"  FuncArgDefault   <-  LitNull  /  LitNumeral  /  LitString  " + _NL +
-"  FuncArg          <-  ( Identifier  ( '='  LxCont  FuncArgDefault {default:0} ) ? ) {funcArg}  " + _NL +
-"  FuncArgList      <-  '('  LxCont  ( FuncArg  ( ','  LxCont  FuncArg ) *  ( ','  LxCont ) ? ) ?  ')'  LxSep  " + _NL +
-"  FuncEnd          <-  KeyEnd <expectedEndFunction!>  LxSep  KeyFunction <expectedFunctionAfterEnd!>  " + _NL +
+"  FuncArgDefault   <-  LitNull  /  LitTrue  /  LitFalse  /  LitNumeral  /  LitString                                               " + _NL +
+"  FuncArg          <-  ( Identifier  ( '='  LxCont  FuncArgDefault {default:0} <expectedArgDefault!> ) ? ) {funcArg}               " + _NL +
+"  FuncArgList      <-  '('  LxCont  ( FuncArg  ( ','  LxCont  FuncArg ) *  ( ','  LxCont ) ? ) ?  ')'  LxSep                       " + _NL +
+"  FuncEnd          <-  KeyEnd <expectedEndFunction!>  LxSep  KeyFunction <expectedFunctionAfterEnd!>                               " + _NL +
 "  FuncDef          <-  ( KeyFunction  LxSep  FuncArgList ?  FuncCont  (-insideLoop)  ( Statement  FuncCont ) *  FuncEnd  (/insideLoop) ) {funcDef}  LxSep  " + _NL +
 "                                                                                   " + _NL +
 "                                                                                   " + _NL +
@@ -5367,63 +5390,6 @@ end function
 //                        _|                                      
 
 
-// _buildParseError: ?
-_buildParseError = function(errors, text)
-	messages = []
-	for i in errors.indexes
-		e = errors[i]
-		if e isa Continuation then return e
-		if e.get("line") then
-			line = e.line
-		else
-			line = lineColumn(text, e.index).line
-		end if
-		if e isa peg.SyntaxError then
-			if e._message == e.tag then
-				msg = _tagToPhrase(e.tag)
-			else
-				msg = e._message
-			end if
-			if e.rest then
-				rest = "'" + e.rest + "'"
-			else
-				rest = "EOS"
-			end if
-			message = msg + ": consumed '" + e.fragment + "', failed before " + rest
-		else
-			message = e.message
-		end if
-		messages.push "(" + (i + 1) + ") " + message + " [line " + line + "]"
-	end for
-	error = new ParseError
-	error.init
-	error.submessages = messages.join(";  ")
-	return error
-end function
-
-
-// _tagToPhrase: ?
-_tagToPhrase = function(tag)
-	_indexes = [0]
-	for i in tag.indexes
-		if tag[i].upper == tag[i] then _indexes.push i
-	end for
-	words = []
-	prevIdx = null
-	for i in range(_indexes.len - 1, 0, -1)
-		idx = _indexes[i]
-		if prevIdx != null then
-			words.insert 0, tag[idx:prevIdx].lower
-		else
-			words.insert 0, tag[idx:].lower
-		end if
-		prevIdx = idx
-	end for
-	phrase = words.join(" ")
-	return phrase[0].upper + phrase[1:]
-end function
-
-
 // _makeParseArg: ?
 _makeParseArg = function(features=null, programName=null)
 	if features == null then features = {}
@@ -5547,15 +5513,52 @@ ParseResult.errors = null
 ParseResult.comments = null
 ParseResult.needMoreInput = null
 ParseResult._result = null
+ParseResult.subject = null
 
 
-ParseResult.init = function(pegResult, arg)
+ParseResult.init = function(subject, pegResult, arg)
 	self._inited = true
 	self._result = pegResult
+	self.subject = subject
 	self.comments = arg.comments
 	if pegResult.length != null then self.program = pegResult.capture
 	self.errors = pegResult.errors
 	self.needMoreInput = pegResult.hasErrorType(Continuation)
+end function
+
+
+// error: ?
+ParseResult.error = function
+	messages = []
+	for i in self.errors.indexes
+		e = self.errors[i]
+		if e isa Continuation then return e
+		if e.get("line") then
+			line = e.line
+		else
+			line = lineColumn(self.subject, e.index).line
+		end if
+		if e isa peg.SyntaxError then
+			if e._message == e.tag then
+				msg = tagToPhrase(e.tag)
+			else
+				msg = e._message
+			end if
+			if e.rest then
+				rest = "'" + e.rest + "'"
+			else
+				rest = "EOS"
+			end if
+			message = msg + ": consumed '" + e.fragment + "', failed before " + rest
+		else
+			message = e.message
+		end if
+		messages.push "(" + (i + 1) + ") " + message + " [line " + line + "]"
+	end for
+	error = new ParseError
+	error.init
+	error.submessages = messages.join(";  ")
+	return error
 end function
 
 
@@ -5567,7 +5570,7 @@ parse = function(text, context=null)
 	if context.params.trimSpacesRight then text = text.trimRight
 	pegResult = grammar.parse(text, 0, arg)
 	result = new ParseResult
-	result.init pegResult, arg
+	result.init text, pegResult, arg
 	context.out.parseResult = result
 	return result
 end function
@@ -5611,7 +5614,7 @@ eval = function(evaluable, context=null)
 		res = parse(evaluable, context)
 		if res.program == null then
 			
-			error = _buildParseError(res.errors, evaluable)
+			error = res.error
 			if not context.catchP(error) then abort error.message
 			context.out.type = "error"
 			context.out.error = error
@@ -5704,18 +5707,12 @@ evalFile = function(fileName, context=null)
 	parseResult = parseFile(fileName, context)
 	
 	if parseResult.program == null then
-		
-		f = file.open(fileName)
-		text = f.read
-		f.close
-		
-		error = _buildParseError(parseResult.errors, text)
+		error = parseResult.error
 		if not context.catchP(error) then abort error.message
 		context.out.type = "error"
 		context.out.error = error
 		context.out.needMoreInput = error isa Continuation
 		return null
-		
 	end if
 	
 	eval(parseResult.program, context)

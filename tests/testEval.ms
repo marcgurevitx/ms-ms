@@ -566,3 +566,27 @@ testEvalArithAssignFunc = function
 	res = ms.eval("f = function ; return 42 ; end function ;   f += 1 ;   @f")
 	qa.assertEqual res, 43
 end function
+
+
+testEvalArgDefaults = function
+	res = ms.eval("f = function(x=null) ; return x ; end function ; f")
+	qa.assertEqual res, null
+	
+	res = ms.eval("f = function(x=0) ; return x ; end function ; f")
+	qa.assertEqual res, 0
+	
+	res = ms.eval("f = function(x=42) ; return x ; end function ; f")
+	qa.assertEqual res, 42
+	
+	res = ms.eval("f = function(x="""") ; return x ; end function ; f")
+	qa.assertEqual res, ""
+	
+	res = ms.eval("f = function(x=""foo"") ; return x ; end function ; f")
+	qa.assertEqual res, "foo"
+	
+	res = ms.eval("f = function(x=true) ; return x ; end function ; f")
+	qa.assertEqual res, true
+	
+	res = ms.eval("f = function(x=false) ; return x ; end function ; f")
+	qa.assertEqual res, false
+end function
