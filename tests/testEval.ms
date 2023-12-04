@@ -560,3 +560,9 @@ testEvalNullLookupError = function
 	qa.assertEqual ctx.out.error isa ms.NullLookupError, true
 	qa.assertEqual ctx.out.error.index, "foo"
 end function
+
+
+testEvalArithAssignFunc = function
+	res = ms.eval("f = function ; return 42 ; end function ;   f += 1 ;   @f")
+	qa.assertEqual res, 43
+end function
