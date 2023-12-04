@@ -1,7 +1,8 @@
+
 import "grfon"
 
 
-// compareTwoStrings: ?
+// compareStrings: ?
 globals.compareStrings = function(s1, s2)
 	i = 0
 	while true

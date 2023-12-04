@@ -1,0 +1,9 @@
+A = 42
+
+return {"foo": A}
+
+A = 43
+
+return {"foo": A}
+
+A = 44

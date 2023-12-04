@@ -19,9 +19,9 @@ testParseSimple = function
 	                                        " statements.0"                                 + _NL +
 	                                        "  [StmtCall 1:1 1:20]"                         + _NL +
 	                                        "   callable:"                                  + _NL +
-	                                        "    [Identifier 1:1 1:5] name = print"         + _NL +
+	                                        "    [Identifier 1:1 1:5] name = ""print"""         + _NL +
 	                                        "   args.0"                                     + _NL +
-	                                        "    [LitString 1:7 1:20] text = hello world!"
+	                                        "    [LitString 1:7 1:20] text = ""hello world!"""
 	qa.assertEqual res.errors, []
 	qa.assertEqual res.comments, {}
 	qa.assertEqual res.needMoreInput, false
@@ -126,3 +126,19 @@ testParseEmpty = function
 	qa.assertEqual res._result.length, 0
 end function
 
+
+testParseProgramName = function
+	res = ms.parse("A + B")
+	qa.assertEqual res.program.programName == null, true
+	qa.assertEqual res.program.statements[0].programName == null, true
+	qa.assertEqual res.program.statements[0].callable.programName == null, true
+	qa.assertEqual res.program.statements[0].callable.operands[0].programName == null, true
+	qa.assertEqual res.program.statements[0].callable.operands[1].programName == null, true
+	
+	res = ms.parse("A + B", {"params": {"programName": "foo"}})
+	qa.assertEqual res.program.programName == "foo", true
+	qa.assertEqual res.program.statements[0].programName == "foo", true
+	qa.assertEqual res.program.statements[0].callable.programName == "foo", true
+	qa.assertEqual res.program.statements[0].callable.operands[0].programName == "foo", true
+	qa.assertEqual res.program.statements[0].callable.operands[1].programName == "foo", true
+end function
