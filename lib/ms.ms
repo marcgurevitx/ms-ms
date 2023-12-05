@@ -50,6 +50,7 @@ if vv[0].val * 1000000 + vv[1].val * 1000 + vv[2].val < 1006002 then
 	intrinsics.bitAnd = @bitAnd
 	intrinsics.bitOr = @bitOr
 	intrinsics.bitXor = @bitXor
+	intrinsics.char = @char
 	intrinsics.code = @code
 	intrinsics.cos = @cos
 	intrinsics.funcRef = @funcRef
@@ -81,6 +82,7 @@ if vv[0].val * 1000000 + vv[1].val * 1000 + vv[2].val < 1006002 then
 	intrinsics.slice = @slice
 	intrinsics.sort = @sort
 	intrinsics.split = @split
+	intrinsics.sqrt = @sqrt
 	intrinsics.str = @str
 	intrinsics.string = @string
 	intrinsics.sum = @sum
@@ -1251,7 +1253,7 @@ SyntaxNode._str = function(depth, seen)
 		name = fullName - " =" - ":" - "." - "."
 		v = self.get(name, "")
 		if fullName.endsWith(" =") then
-			s = str(v, depth - 1, seen)
+			s = str(v, depth, seen)
 			
 			//
 			s = s.replace(char(13) + char(10), "←").replace(char(10), "←").replace(char(13), "←")
@@ -1261,7 +1263,7 @@ SyntaxNode._str = function(depth, seen)
 		else if fullName.endsWith(":") then
 			lines.push " " + fullName
 			if v then
-				for part in str(v, depth - 1, seen).split(_NL)
+				for part in str(v, depth, seen).split(_NL)
 					lines.push "  " + part
 				end for
 			end if
@@ -1277,7 +1279,7 @@ SyntaxNode._str = function(depth, seen)
 						for j in w.indexes
 							elem = w[j]
 							lines.push " " + name + "." + i + "." + j
-							for part in str(elem, depth - 1, seen).split(_NL)
+							for part in str(elem, depth, seen).split(_NL)
 								lines.push "  " + part
 							end for
 						end for
@@ -1291,7 +1293,7 @@ SyntaxNode._str = function(depth, seen)
 				for i in v.indexes
 					elem = v[i]
 					lines.push " " + fullName + i
-					for part in str(elem, depth - 1, seen).split(_NL)
+					for part in str(elem, depth, seen).split(_NL)
 						lines.push "  " + part
 					end for
 				end for

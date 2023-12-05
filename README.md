@@ -2,6 +2,9 @@
 
 **ms.ms** is a [MiniScript](https://miniscript.org/) parser and evaluator written in MiniScript.
 
+> [!WARNING]
+> Extremely slow.
+
 The library depends on [peg.ms](https://github.com/marcgurevitx/peg-ms).
 
 ```
@@ -65,4 +68,19 @@ print ctx.out.error isa ms.Continuation     // prints '1'
 print ctx.out.error.message
 // prints 'Continuation Error: Need more input to complete an expression or literal [line 1]'
 
+
+// Evaluate a file
+// 1.txt:
+// s = "  2    3  "
+// fields = s.split
+// for i in range(fields.len-1, 0)
+//     if fields[i] == "" then fields.remove i
+// end for
+// if fields.len < 2 then
+//     print "Not enough input"
+// else
+//     print val(fields[0]) + val(fields[1])
+// end if
+m = ms.evalFile("1.txt")        // prints '5'
+print m                         // prints '{"s": "  2    3  ", "fields": ["2", "3"], "i": 0}'
 ```
